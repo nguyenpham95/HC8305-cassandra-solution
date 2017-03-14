@@ -117,12 +117,12 @@
 
         </div>
         <ul class="os-percentages horizontal-list" style="width:100%;height:84px;position:absolute;bottom:36px;background-color:transparent;">
-            <li style="width:34%;display:inline-block;float:left;height:84px;margin-top:-1px;background-color:transparent;">
+            <li style="width:34%;display:inline-block;float:left;height:84px;background-color:transparent;margin-top:-1px;">
                 <p class="mac os scnd-font-color white_color" style="font-weight:bold;">Normal</p>
                 <p class="os-percentage normal_color" style="font-weight:bold;">{{selected_record.statistics[0]}}<sup>%</sup></p>
             </li>
             <li style="width:33%;display:inline-block;float:left;height:84px;background-color:transparent;">
-                <p class="linux os scnd-font-color white_color" style="font-weight:bold;">Risk</p>
+                <p class="linux os scnd-font-color white_color" style="font-weight:bold;">Caution</p>
                 <p class="os-percentage caution_color" style="font-weight:bold;">{{selected_record.statistics[1]}}<sup>%</sup></p>
             </li>
             <li style="width:33%;display:inline-block;float:left;height:84px;background-color:transparent;">
@@ -162,7 +162,7 @@
             {{$index + 1}}. {{record.name}}
           </div>
           <div style="width:100%;float:left;display:inline-block;margin-top:-16px;padding-left:10px;">
-            <p style="font-size:12px;" class="highlight_color">{{record.date | date}}</p>
+            <p style="font-size:12px;" class="highlight_color">{{record.date | date}}, by: {{record.uploaded_by}}</p>
           </div>
           <div class="" style="width:100%;float:left;display:inline-block;margin-top:-10px;padding-left:10px;height:32px;line-height:20px;padding-right:10px;">
             <p style="font-size:14px;height:32px;line-height:20px;" class="grey_color overflow-3dot">

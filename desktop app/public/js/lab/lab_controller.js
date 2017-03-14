@@ -841,7 +841,11 @@ var app = angular.module("app")
         sampling_frequency: $scope.record_sampling_frequency,
         data: ecg_storage
       };
-      $scope.records = JSON.parse($window.localStorage["cassandra_records"]);
+      if ($window.localStorage["cassandra_records"]) {
+        $scope.records = JSON.parse($window.localStorage["cassandra_records"]);
+      } else {
+        $scope.records = [];
+      };
       $scope.records.push($scope.new_record);
       $window.localStorage["cassandra_records"] = JSON.stringify($scope.records);
       $window.localStorage[$scope.record_data._id] = JSON.stringify($scope.record_data);

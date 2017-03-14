@@ -17,7 +17,7 @@ var app = angular.module("app")
   };
   $scope.express_server = {
     name: "Cassandra express server",
-    link: "http://localhost:8081",
+    link: "https://cassandra-server.herokuapp.com",
   };
   $scope.update_duration = function() {
     $scope.record_duration = Math.floor($scope.ecg_data.length / ($scope.record_sampling_frequency) * 10) / 10;
@@ -813,7 +813,7 @@ var app = angular.module("app")
       jQuery("#upload_record_popup").hide();
     });
   };
-
+  $scope.userInfo = JSON.parse($window.localStorage["cassandra_userInfo"]);
   $scope.save_this_record = function() {
 
     jQuery("#page_loading").show();
@@ -824,6 +824,7 @@ var app = angular.module("app")
       $scope.new_record = {
         name: $scope.record_name,
         date: $scope.record_date,
+        uploaded_by: $scope.userInfo.email,
         _id: "record__" + Math.floor(Math.random() * 1000000) + "__" + $scope.record_name.split(' ').join('_') + "__" + $scope.record_comment.split(' ').join('_'),
         data_link: $scope.local_server.link + "\\bin\\saved-records\\" + $scope.record_name.split(' ').join('_') + ".txt",
         description: $scope.record_comment,
@@ -841,12 +842,18 @@ var app = angular.module("app")
         sampling_frequency: $scope.record_sampling_frequency,
         data: ecg_storage
       };
-      $scope.records = JSON.parse($window.localStorage["cassandra_records"]);
-      $scope.records.push($scope.new_record);
-      $window.localStorage["cassandra_records"] = JSON.stringify($scope.records);
-      $window.localStorage[$scope.record_data._id] = JSON.stringify($scope.record_data);
+      if ($window.localStorage["cassandra_records"]) {
+        $scope.records = JSON.parse($window.localStorage["cassandra_records"]);
+      } else {
+        $scope.records = [];
+      };
+      // $scope.records.push($scope.new_record);
+      // $window.localStorage["cassandra_records"] = JSON.stringify($scope.records);
+      // $window.localStorage[$scope.record_data._id] = JSON.stringify($scope.record_data);
 
       socket.emit("save_this_record_to_server", $scope.new_record);
+
+      socket.emit("save_this_record_data_to_other_machine", $scope.record_data);
 
       alert("Record saved successfully");
       jQuery("#page_loading").hide();
@@ -856,6 +863,13 @@ var app = angular.module("app")
     }, 1600);
 
   };
+
+  socket.on("save_this_record_data_to_other_machine_succeeded", function(response) {
+    var record_data = response;
+    $scope.$apply(function() {
+      $window.localStorage[record_data._id] = JSON.stringify(record_data);
+    });
+  });
 
   jQuery("#page_loading").hide();
 }]);

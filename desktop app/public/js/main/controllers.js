@@ -512,7 +512,9 @@ var app = angular.module("app")
   };
 
   socket.on("save_record_to_server_successed", function(response) {
-    $scope.records.push(response);
+    $scope.$apply(function() {
+      $scope.records.push(response);
+    });
   });
 
 }]);

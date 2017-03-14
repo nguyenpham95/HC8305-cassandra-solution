@@ -475,13 +475,14 @@ var app = angular.module("app")
       $scope.cancel_custom_timeout();
     }, 160);
   };
-
+  $scope.userInfo = JSON.parse($window.localStorage["cassandra_userInfo"]);
   $scope.save_this_record = function() {
     jQuery("#page_loading").show();
     $scope.custom_timeout = $timeout(function() {
       $scope.new_record = {
         name: $scope.record_name,
         date: $scope.record_date,
+        uploaded_by: $scope.userInfo.email,
         _id: "record__" + Math.floor(Math.random() * 1000000) + "__" + $scope.record_name.split(' ').join('_') + "__" + $scope.record_comment.split(' ').join('_'),
         data_link: $scope.local_server.link + "\\bin\\saved-records\\" + $scope.record_name.split(' ').join('_') + ".txt",
         description: $scope.record_comment,
@@ -500,19 +501,45 @@ var app = angular.module("app")
         data: $scope.ecg_data
       };
       // socket.emit("save_this_record_to_server", $scope.new_record);
-      $scope.records.push($scope.new_record);
-      $window.localStorage["cassandra_records"] = JSON.stringify($scope.records);
-      $window.localStorage[$scope.record_data._id] = JSON.stringify($scope.record_data);
+
+      // $scope.records.push($scope.new_record);
+      // $window.localStorage["cassandra_records"] = JSON.stringify($scope.records);
+      // $window.localStorage[$scope.record_data._id] = JSON.stringify($scope.record_data);
+
       // console.log($window.localStorage[$scope.record_data.name].length);
       alert("Record uploaded successfully");
       jQuery("#page_loading").hide();
       $scope.cancel_custom_timeout();
       $scope.close_popup_upload_record();
+
+      socket.emit("save_this_record_to_server", $scope.new_record);
+
+      socket.emit("save_this_record_data_to_other_machine", $scope.record_data);
+
     }, 1600);
   };
 
   socket.on("save_record_to_server_successed", function(response) {
-    $scope.records.push(response);
+    $scope.$apply(function() {
+      if ($window.localStorage["cassandra_records"]) {
+        $scope.records = JSON.parse($window.localStorage["cassandra_records"]);
+        if ($scope.records.indexOf(response) < 0) {
+          $scope.records.push(response);
+          $window.localStorage["cassandra_records"] = JSON.stringify($scope.records);
+        };
+      } else {
+        $scope.records = [];
+        $scope.records.push(response);
+        $window.localStorage["cassandra_records"] = JSON.stringify($scope.records);
+      };
+    });
+  });
+
+  socket.on("save_this_record_data_to_other_machine_succeeded", function(response) {
+    var record_data = response;
+    $scope.$apply(function() {
+      $window.localStorage[record_data._id] = JSON.stringify(record_data);
+    });
   });
 
 }]);

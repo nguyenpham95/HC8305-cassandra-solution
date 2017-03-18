@@ -174,6 +174,9 @@ var app = angular.module("app")
     name: "Cassandra express server",
     link: "https://cassandra-server.herokuapp.com",
   };
+  if ($window.localStorage["cassandra_userInfo"]) {
+    $scope.userInfo = JSON.parse($window.localStorage["cassandra_userInfo"]);
+  };
   $scope.ecg_data = [];
   $scope.file_content = [];
   $scope.record_name = "";
@@ -438,11 +441,6 @@ var app = angular.module("app")
     }, 160);
   };
 
-
-  if ($window.localStorage["cassandra_userInfo"]) {
-    $scope.userInfo = JSON.parse($window.localStorage["cassandra_userInfo"]);
-  };
-
   $scope.save_this_record = function() {
     jQuery("#page_loading").show();
     $scope.custom_timeout = $timeout(function() {
@@ -491,6 +489,18 @@ var app = angular.module("app")
     $scope.$apply(function() {
       $scope.records.push(response);
     });
+  });
+
+  socket.emit("make_server_listen_to_this_socket", $scope.userInfo.user_id);
+
+  var pipline_name = "data_from_phone_" + $scope.userInfo.user_id + "_to_server";
+  var pipline_result = "data_from_phone_" + $scope.userInfo.user_id + "_to_server_result_to_diagnosis_app";
+
+  var test_message = "Hello " + $scope.userInfo.email;
+  socket.emit(pipline_name, test_message);
+
+  socket.on(pipline_result, function(data) {
+    console.log(data);
   });
 
 }]);

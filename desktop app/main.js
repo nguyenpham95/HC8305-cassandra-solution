@@ -263,7 +263,6 @@ console.log(process.versions);
     return [t_peaks, t_locs];
   };
 
-
 const electron = require('electron');
 
 // Module to control application life.
@@ -323,7 +322,7 @@ function createWindow () {
 
   // Create a server
   mainWindow.webContents.once("did-finish-load", function () {
-      // Socket io options
+        // Socket io options
         io.sockets.on('connection', function (socket) {
           // socket.emit : emit to just one socket
           // io.sockets.emit : emit to all sockets
@@ -388,22 +387,16 @@ function createWindow () {
               };
             });
           });
-        });
 
-      // Diag server options
-        diag_app.post("/save_this_record", function(req, res) {
-          var record = req.body;
-          var text_content = record.record_data.sampling_frequency + "\r\n";
-          for (var loop = 0; loop < record.record_data.data.length; loop++) {
-            text_content = text_content + (record.record_data.data[loop] + "\r\n");
-          };
-          fs.writeFile("E:\\Github\\Cassandra\\desktop app\\public\\bin\\saved-records\\" + record.name.split(' ').join('_') + ".txt", text_content, function (err) {
-            if (err) return console.log(err);
+          socket.on("make_server_listen_to_this_socket", function(data) {
+            console.log("Create new streamming pipline with: " + data);
+            var pipline_name = "data_from_phone_" + data + "_to_server";
+            var pipline_result = "data_from_phone_" + data + "_to_server_result_to_diagnosis_app";
+            socket.on(pipline_name, function(data) {
+              io.sockets.emit(pipline_result, data);
+            });
           });
-          console.log("Saved success");
         });
-
-
   });
 
   // Open the DevTools.

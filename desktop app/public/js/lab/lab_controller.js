@@ -15,12 +15,12 @@ var app = angular.module("app")
     name: "Local server",
     link: "http://localhost:8000",
   };
-  $scope.express_server = {
+  $scope.transaction_server = {
     name: "Cassandra express server",
-    link: "http://localhost:8081",
+    link: "https://cassandra-server.herokuapp.com",
   };
   $scope.update_duration = function() {
-    $scope.record_duration = Math.floor($scope.ecg_data.length / ($scope.record_sampling_frequency) * 10) / 10;
+    $scope.record_duration = Math.floor(ecg_storage.length / ($scope.record_sampling_frequency) * 10) / 10;
   };
   $scope.ecg_data = [];
   $scope.file_content = [];
@@ -30,7 +30,9 @@ var app = angular.module("app")
   $scope.record_duration = Math.floor($scope.file_content.length / ($scope.record_sampling_frequency) * 10) / 10;
   $scope.record_date = new Date();
 
-  var socket = io.connect($scope.local_server.link);
+  var socket = io.connect($scope.local_server.link, { 'force new connection': true } );
+
+  var heroku_socket = io.connect($scope.transaction_server.link, { 'force new connection': true } );
 
   var red_code = "#f05b4f";
   // var orange_code = "#d17905";
@@ -290,77 +292,12 @@ var app = angular.module("app")
 
   var ecg_storage;
 
-  // if ($window.localStorage["cassandra_command_lab_to_run_this_signal"]) {
-  //   $scope.link = $window.localStorage["cassandra_command_lab_to_run_this_signal"];
-  //   $window.localStorage.removeItem("cassandra_command_lab_to_run_this_signal");
-  //   $http({
-  //     method: "GET",
-  //     url: $scope.link
-  //   }).then(function successCallback(response) {
-  //     ecg_bin = response.data.split('\r\n');
-  //     $scope.sampling_frequency = ecg_bin[0];
-  //     ecg_bin.splice(0, 1);
-  //     ecg_storage = ecg_bin;
-  //     if ($scope.sampling_frequency > 40) {
-  //       $scope.down_sampling_value = Math.floor($scope.sampling_frequency / $scope.plot_speed);
-  //       // Signal preprocessing
-  //       // Scale up for easy calculation
-  //       for (i = 0; i < ecg_bin.length; i ++) {
-  //         ecg_bin[i] = ecg_bin[i] * 1000;
-  //       };
-  //
-  //       // Scale above 0
-  //
-  //       var value = dsp.find_min(ecg_bin);
-  //       if (value < 0) {
-  //         for (i = 0; i < ecg_bin.length; i ++) {
-  //           ecg_bin[i] = ecg_bin[i] + Math.abs(value);
-  //         };
-  //       } else {
-  //         ecg_bin[i] = ecg_bin[i] - value;
-  //       };
-  //
-  //       // var value = dsp.find_min(ecg_bin);
-  //       // for (i = 0; i < ecg_bin.length; i ++) {
-  //       //   ecg_bin[i] = ecg_bin[i] + Math.abs(value);
-  //       // };
-  //
-  //       // Scale about mean 1
-  //
-  //       var value = dsp.cal_mean(ecg_bin);
-  //       // if (value > 400) {
-  //         for (i = 0; i < ecg_bin.length; i ++) {
-  //           ecg_bin[i] = ecg_bin[i] - value;
-  //         };
-  //       // }
-  //
-  //       // Normalize from -1000 to 1000
-  //
-  //       var value = dsp.find_max(ecg_bin);
-  //       for (i = 0; i < ecg_bin.length; i ++) {
-  //         ecg_bin[i] = Math.floor(ecg_bin[i] / value * 1000);
-  //       };
-  //
-  //       ecg_bin = preprocess_signal([10, 1500], $scope.down_sampling_value, null, ecg_bin);
-  //       var chart_max_value = dsp.find_max(ecg_bin);
-  //       var chart_min_value = dsp.find_min(ecg_bin);
-  //       $scope.initiateChart(chart_max_value, chart_min_value);
-  //     } else {
-  //       var chart_max_value = dsp.find_max(ecg_bin);
-  //       chart_max_value = chart_max_value * 1.4;
-  //       var chart_min_value = dsp.find_min(ecg_bin);
-  //       $scope.initiateChart(chart_max_value, chart_min_value);
-  //     };
-  //   }, function errorCallback(response) {
-  //     alert("No entry found!");
-  //   });
-
   if ($window.localStorage["cassandra_command_lab_to_run_this_signal"]) {
 
     $scope.record = JSON.parse($window.localStorage["cassandra_command_lab_to_run_this_signal"]);
     $window.localStorage.removeItem("cassandra_command_lab_to_run_this_signal");
 
-    var record_data_id = $scope.record._id;
+    var record_data_id = $scope.record.record_id;
 
     $scope.record_name = $scope.record.name;
     $scope.record_comment = $scope.record.description;
@@ -761,10 +698,6 @@ var app = angular.module("app")
     };
   };
 
-  //using_intervals_to_diagnose(2000, 2000, 2000);
-
-
-
   socket.on("diag_server-welcome-new-user", function(data) {
     var chat_message = {
       name: "Server",
@@ -791,17 +724,18 @@ var app = angular.module("app")
     }, 400);
     $scope.custom_timeout = $timeout(function() {
       jQuery("#page_loading").show();
-
-      $scope.ecg_data = ecg_storage;
       var text_output_to_area = "";
-      for (var loop = 0; loop < $scope.ecg_data.length; loop++) {
-        text_output_to_area = text_output_to_area + $scope.ecg_data[loop] / 1000 + "\n";
+      var value_to_devine = dsp.find_max(ecg_storage);
+      for (var loop = 0; loop < ecg_storage.length - 1; loop++) {
+        ecg_storage[loop] = Math.floor(ecg_storage[loop] / value_to_devine * 1000) / 1000;
+        text_output_to_area += (ecg_storage[loop] + "\n");
       };
+      ecg_storage[ecg_storage.length - 1] = Math.floor(ecg_storage[ecg_storage.length - 1] / value_to_devine * 1000) / 1000;
+      text_output_to_area += (ecg_storage[ecg_storage.length - 1]);
       $scope.file_content = text_output_to_area;
       $scope.update_duration();
       jQuery("#page_loading").hide();
       $scope.cancel_custom_timeout();
-
     }, 500);
   };
 
@@ -814,17 +748,18 @@ var app = angular.module("app")
     });
   };
 
+  if ($window.localStorage["cassandra_userInfo"]) {
+    $scope.userInfo = JSON.parse($window.localStorage["cassandra_userInfo"]);
+  };
   $scope.save_this_record = function() {
 
     jQuery("#page_loading").show();
     $scope.custom_timeout = $timeout(function() {
-      for (var loop = 0; loop < ecg_storage.length; loop++) {
-        ecg_storage[loop] = ecg_storage[loop] / 1000;
-      };
       $scope.new_record = {
         name: $scope.record_name,
         date: $scope.record_date,
-        _id: "record__" + Math.floor(Math.random() * 1000000) + "__" + $scope.record_name.split(' ').join('_') + "__" + $scope.record_comment.split(' ').join('_'),
+        uploaded_by: $scope.userInfo.email + "-desktop",
+        record_id: "record__" + Math.floor(Math.random() * 1000000) + "__" + $scope.record_name.split(' ').join('_') + "__" + $scope.record_comment.split(' ').join('_'),
         data_link: $scope.local_server.link + "\\bin\\saved-records\\" + $scope.record_name.split(' ').join('_') + ".txt",
         description: $scope.record_comment,
         clinical_symptoms: {
@@ -835,11 +770,13 @@ var app = angular.module("app")
         },
         statistics: transform_statistics($scope.statistics_count),
         send_to_doctor: false,
+        user_info: JSON.parse($window.localStorage["cassandra_userInfo"]),
       };
       $scope.record_data = {
-        _id: $scope.new_record._id,
+        record_id: $scope.new_record.record_id,
         sampling_frequency: $scope.record_sampling_frequency,
-        data: ecg_storage
+        data: ecg_storage,
+        user_info: JSON.parse($window.localStorage["cassandra_userInfo"]),
       };
       if ($window.localStorage["cassandra_records"]) {
         $scope.records = JSON.parse($window.localStorage["cassandra_records"]);
@@ -848,9 +785,15 @@ var app = angular.module("app")
       };
       $scope.records.push($scope.new_record);
       $window.localStorage["cassandra_records"] = JSON.stringify($scope.records);
-      $window.localStorage[$scope.record_data._id] = JSON.stringify($scope.record_data);
+      $window.localStorage[$scope.record_data.record_id] = JSON.stringify($scope.record_data);
 
-      socket.emit("save_this_record_to_server", $scope.new_record);
+      socket.emit("save_this_record_to_local_server", $scope.new_record);
+      var package_to_database_server = {
+        record_info: $scope.new_record,
+        record_data: $scope.record_data,
+        user_info: $scope.userInfo,
+      };
+      heroku_socket.emit("save_this_record_directly_to_database_server", package_to_database_server);
 
       alert("Record saved successfully");
       jQuery("#page_loading").hide();

@@ -30,11 +30,13 @@ var app = angular.module("app")
         email: $scope.user_email,
         password: $scope.user_password
       };
+      userInfo.user_id = Math.floor(Math.random() * 1000) + "-" + Math.floor(Math.random() * 1000) + "-" + Math.floor(Math.random() * 10000);
       if (userInfo.password == 456) {
         login_failed();
       } else {
         $scope.userInfo = userInfo;
         $window.localStorage["cassandra_userInfo"] = JSON.stringify(userInfo);
+        console.log($scope.userInfo);
         hide_login();
       };
     };
@@ -92,12 +94,12 @@ var app = angular.module("app")
     $scope.ehealth = JSON.parse($window.localStorage["cassandra_my_ehealth"]);
   } else {
     $scope.ehealth = {
-      fullname: "Pham Khoi Nguyen",
+      fullname: "",
       date_of_birth: "",
-      mssid: "VN-HCM-5400KB",
-      sex: "Male",
+      mssid: JSON.parse($scope.userInfo.user_id),
+      sex: "",
       occupation: "",
-      email: $scope.userInfo.email,
+      email: "",
       phone: "",
       country: "",
       city: "",
@@ -105,12 +107,12 @@ var app = angular.module("app")
       address_line_2: "",
       my_doctors: [
         {
-          fullname: "Aurora Anfredyla",
-          dssid: "US-MANS-4218LA",
-          specity: "Heart disease department",
-          work_address: "Arizona state hospital, Losangeles, US",
-          phone: "+ (32) 916 112 985",
-          email: "auro.andres@arizo.com",
+          fullname: "",
+          dssid: "",
+          specity: "",
+          work_address: "",
+          phone: "",
+          email: "",
         },
       ],
       location: {lat: "", lng: ""},
@@ -161,16 +163,16 @@ var app = angular.module("app")
     console.log($scope.ehealth.clinical_symptoms.dizziness);
   }
 }])
-.controller("recordsController", ["$scope", "$http", "$rootScope", "$window", "printService", 'FileSaver', 'Blob', '$location', '$interval', '$timeout', function ($scope, $http, $rootScope, $window, printService, FileSaver, Blob, $location, $interval, $timeout) {
+.controller("recordsController", ["$scope", "$http", "$rootScope", "$window", "printService", 'FileSaver', 'Blob', '$location', '$interval', '$timeout', 'dsp', function ($scope, $http, $rootScope, $window, printService, FileSaver, Blob, $location, $interval, $timeout, dsp) {
   jQuery("#upload_record_popup").hide();
   jQuery("#smallPopup_uploadRecord").tinyDraggable({ handle: '.header' });
   $scope.local_server = {
     name: "Local server",
     link: "http://localhost:8000",
   };
-  $scope.express_server = {
+  $scope.transaction_server = {
     name: "Cassandra express server",
-    link: "http://localhost:8081",
+    link: "https://cassandra-server.herokuapp.com",
   };
   $scope.ecg_data = [];
   $scope.file_content = [];
@@ -180,7 +182,9 @@ var app = angular.module("app")
   $scope.record_duration = Math.floor($scope.file_content.length / ($scope.record_sampling_frequency) * 10) / 10;
   $scope.record_date = new Date();
 
-  var socket = io.connect($scope.local_server.link);
+  var socket = io.connect($scope.local_server.link, { 'force new connection': true } );
+
+  var heroku_socket = io.connect($scope.transaction_server.link, { 'force new connection': true } );
 
   $scope.init_chart = function(normal, risk, danger) {
     var chart = new Chartist.Pie('.ct-chart', {
@@ -261,72 +265,6 @@ var app = angular.module("app")
     $scope.cancel_custom_timeout();
   }, 1600);
 
-
-  // For communicate with server herokuapp
-
-  // socket.emit("get_all_records_from_text_file");
-  //
-  // socket.on("get_all_records_from_text_file_succeeded", function(response) {
-  //   if (response.text_content) {
-  //     $scope.$apply(function() {
-  //       $scope.records = JSON.parse(response.text_content);
-  //     });
-  //
-  //   } else {
-  //     $scope.$apply(function() {
-  //       $scope.records = [];
-  //     });
-  //   };
-  //   jQuery("#loading_records_spinner").hide();
-  // });
-  //
-  // socket.on("get_all_records_from_text_file_failed", function(response) {
-  //   alert("Sorry, cassandra cannot get your records. Please allow the software to access your network!");
-  //   jQuery("#loading_records_spinner").hide();
-  // });
-  //
-  // $scope.update_my_records_to_local_storage = function(obj) {
-  //   if (obj) {
-  //     var text_content = JSON.stringify(obj);
-  //     socket.emit("update_all_records_on_local_server", { text_content: text_content });
-  //   } else {
-  //     var text_content = JSON.stringify($scope.records);
-  //     socket.emit("update_all_records_on_local_server", { text_content: text_content });
-  //   };
-  //
-  // };
-
-  // socket.on("save_record_to_server_failed", function(response) {
-  //   jQuery("#page_loading").hide();
-  //   alert("Save record to server failed");
-  // });
-
-  // socket.on("update_all_records_to_local_server_failed", function(response) {
-  //   jQuery("#page_loading").hide();
-  //   alert("Sorry, update all records to text file failed");
-  // });
-  //
-  // socket.on("save_record_to_server_successed", function(response) {
-  //
-  //   response.record_data.data = [];
-  //   $scope.$apply(function () {
-  //     $scope.records.push(response);
-  //     // $window.localStorage["cassandra_records"] = JSON.stringify($scope.records);
-  //     $scope.update_my_records_to_local_storage();
-  //   });
-  //   alert("Record saved successfully!");
-  // });
-  //
-  // socket.on("update_all_records_to_local_server_successed", function(response) {
-  //   jQuery("#page_loading").hide();
-  //   $scope.$apply(function() {
-  //     $scope.records = JSON.parse(response.records_text);
-  //   });
-  //   $scope.close_popup_upload_record();
-  // });
-
-  // End of server communication with heroku
-
   $scope.selected_record = {
     name: "No records hovered",
     statistics: [0, 0, 0],
@@ -395,7 +333,7 @@ var app = angular.module("app")
       $scope.selected_index = index;
 
       $scope.record = $scope.records[index];
-      var record_data_id = $scope.record._id;
+      var record_data_id = $scope.record.record_id;
 
       $window.localStorage.removeItem(record_data_id);
 
@@ -413,24 +351,37 @@ var app = angular.module("app")
     };
   };
 
-
-
   $scope.importPackageFromTextFile = function($fileContent) {
     jQuery("#page_loading").show();
     $scope.custom_timeout = $timeout(function() {
+      var fullPath = document.getElementById('file-upload').value;
+      var filename = "";
+      if (fullPath) {
+        filename = fullPath.replace(/^.*?([^\\\/]*)$/, '$1');
+        filename = filename.substring(0, filename.lastIndexOf('.'));
+      };
       var result = [];
       var lines = $fileContent.split('\n');
-      for(var line = 0; line < lines.length; line++) {
-        result.push(lines[line]);
+      for(var line = 3; line < lines.length - 1; line++) {
+        values = lines[line].split(/[ ,;\t ]+/).filter(Boolean);
+        if (values.length == 1) {
+          result.push(values);
+        } else {
+          var number_of_leads = values.length;
+          result.push(values[number_of_leads - 1]);
+        };
       };
-      if ($scope.file_content.length > 0) {
-        $scope.file_content = $scope.file_content.concat($fileContent);
-        $scope.ecg_data = $scope.ecg_data.concat(result);
-      } else {
-        $scope.file_content = $fileContent;
-        $scope.ecg_data = result;
+      $scope.file_content = "";
+      var value_to_devine = dsp.find_max(result);
+      for (var loop = 0; loop < result.length - 1; loop++) {
+        result[loop] = Math.floor(result[loop] / value_to_devine * 1000) / 1000;
+        $scope.file_content += (result[loop] + "\n");
       };
-      $scope.update_ecg_data_and_duration();
+      result[result.length - 1] = Math.floor(result[result.length - 1] / value_to_devine * 1000) / 1000;
+      $scope.file_content += (result[result.length - 1]);
+      $scope.ecg_data = result;
+      $scope.record_name = filename;
+      $scope.record_duration = Math.floor($scope.ecg_data.length / ($scope.record_sampling_frequency) * 10) / 10;
       jQuery("#page_loading").hide();
       $scope.cancel_custom_timeout();
     }, 200);
@@ -443,9 +394,20 @@ var app = angular.module("app")
   $scope.update_ecg_data_and_duration = function() {
     var result = [];
     var lines = $scope.file_content.split('\n');
-    for(var line = 0; line < lines.length; line++) {
-      result.push(lines[line]);
+    for(var line = 3; line < lines.length; line++) {
+      values = lines[line].split(/[ ,;\t ]+/).filter(Boolean);
+      if (values.length == 1) {
+        result.push(values);
+      } else {
+        var number_of_leads = values.length;
+        result.push(values[number_of_leads - 1]);
+      };
     };
+    $scope.file_content = "";
+    for (var loop = 0; loop < result.length - 1; loop++) {
+      $scope.file_content += (result[loop] + "\n");
+    };
+    $scope.file_content += (result[result.length - 1]);
     $scope.ecg_data = result;
     $scope.record_duration = Math.floor($scope.ecg_data.length / ($scope.record_sampling_frequency) * 10) / 10;
   };
@@ -476,13 +438,19 @@ var app = angular.module("app")
     }, 160);
   };
 
+
+  if ($window.localStorage["cassandra_userInfo"]) {
+    $scope.userInfo = JSON.parse($window.localStorage["cassandra_userInfo"]);
+  };
+
   $scope.save_this_record = function() {
     jQuery("#page_loading").show();
     $scope.custom_timeout = $timeout(function() {
       $scope.new_record = {
         name: $scope.record_name,
         date: $scope.record_date,
-        _id: "record__" + Math.floor(Math.random() * 1000000) + "__" + $scope.record_name.split(' ').join('_') + "__" + $scope.record_comment.split(' ').join('_'),
+        uploaded_by: $scope.userInfo.email + "-desktop",
+        record_id: "record__" + Math.floor(Math.random() * 1000000) + "__" + $scope.record_name.split(' ').join('_') + "__" + $scope.record_comment.split(' ').join('_'),
         data_link: $scope.local_server.link + "\\bin\\saved-records\\" + $scope.record_name.split(' ').join('_') + ".txt",
         description: $scope.record_comment,
         clinical_symptoms: {
@@ -491,27 +459,35 @@ var app = angular.module("app")
           severe_sweating: false,
           dizziness: false,
         },
-        statistics: [0, 0, 0],
+        statistics: [0, 0, 0, 100],
         send_to_doctor: false,
+        user_info: JSON.parse($window.localStorage["cassandra_userInfo"]),
       };
       $scope.record_data = {
-        _id: $scope.new_record._id,
+        record_id: $scope.new_record.record_id,
         sampling_frequency: $scope.record_sampling_frequency,
-        data: $scope.ecg_data
+        data: $scope.ecg_data,
+        user_info: JSON.parse($window.localStorage["cassandra_userInfo"]),
       };
-      // socket.emit("save_this_record_to_server", $scope.new_record);
       $scope.records.push($scope.new_record);
       $window.localStorage["cassandra_records"] = JSON.stringify($scope.records);
-      $window.localStorage[$scope.record_data._id] = JSON.stringify($scope.record_data);
-      // console.log($window.localStorage[$scope.record_data.name].length);
+      $window.localStorage[$scope.record_data.record_id] = JSON.stringify($scope.record_data);
       alert("Record uploaded successfully");
       jQuery("#page_loading").hide();
       $scope.cancel_custom_timeout();
       $scope.close_popup_upload_record();
+
+      var package_to_database_server = {
+        record_info: $scope.new_record,
+        record_data: $scope.record_data,
+        user_info: $scope.userInfo,
+      };
+      heroku_socket.emit("save_this_record_directly_to_database_server", package_to_database_server);
+
     }, 1600);
   };
 
-  socket.on("save_record_to_server_successed", function(response) {
+  socket.on("save_record_to_local_server_successed", function(response) {
     $scope.$apply(function() {
       $scope.records.push(response);
     });

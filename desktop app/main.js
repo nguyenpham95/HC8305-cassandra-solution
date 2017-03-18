@@ -345,29 +345,11 @@ function createWindow () {
               data_pointer += option.number_of_samples;
             };
           });
-          // socket.on("save_this_record_to_server", function(data) {
-          //   var record = data;
-          //   console.log("Received record " + record.name);
-          //   var text_content = record.record_data.sampling_frequency + "\r\n";
-          //   for (var loop = 0; loop < record.record_data.data.length; loop++) {
-          //     text_content = text_content + (record.record_data.data[loop] + "\r\n");
-          //   };
-          //   fs.writeFile(__dirname + "\\public" + "\\bin\\saved-records\\" + record.name.split(' ').join('_') + ".txt", text_content, function (err) {
-          //   // fs.writeFile(__dirname + "\\bin\\saved-records\\" + record.name + ".txt", text_content, function (err) {
-          //     if (err) {
-          //       console.log(err);
-          //       io.sockets.emit("save_record_to_server_failed", err);
-          //     } else {
-          //       console.log("Save record successed");
-          //       io.sockets.emit("save_record_to_server_successed", record);
-          //     };
-          //   });
-          // });
 
-          socket.on("save_this_record_to_server", function(data) {
+          socket.on("save_this_record_to_local_server", function(data) {
             var record = data;
             console.log("Received record " + record._id);
-            io.sockets.emit("save_record_to_server_successed", record);
+            io.sockets.emit("save_record_to_local_server_successed", record);
           });
 
           socket.on("update_all_records_on_local_server", function(data) {
